@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { makeAutoObservable } from 'mobx';
+import cupsData from '../cups';
 
 class CupsStore {
   constructor() {
@@ -11,6 +12,14 @@ class CupsStore {
   getRemainingCups() {
     return 3700 - this.cups.filter((cup) => cup.drank).length * 370;
   }
+
+  drinkCup = async () => {
+    const cup = this.cups.find((cup) => !cup.drank);
+    if (cup) {
+      cup.drank = true;
+      await AsyncStorage.setItem(`cups`, JSON.stringify(this.cups));
+    }
+  };
 
   getPercentage() {
     return (
@@ -24,48 +33,7 @@ class CupsStore {
       if (response !== null) {
         this.cups = JSON.parse(response);
       } else {
-        this.cups = [
-          {
-            id: 1,
-            drank: false,
-          },
-          {
-            id: 2,
-            drank: false,
-          },
-          {
-            id: 3,
-            drank: false,
-          },
-          {
-            id: 4,
-            drank: false,
-          },
-          {
-            id: 5,
-            drank: false,
-          },
-          {
-            id: 6,
-            drank: false,
-          },
-          {
-            id: 7,
-            drank: false,
-          },
-          {
-            id: 8,
-            drank: false,
-          },
-          {
-            id: 9,
-            drank: false,
-          },
-          {
-            id: 10,
-            drank: false,
-          },
-        ];
+        this.cups = cupsData;
         await AsyncStorage.setItem('cups', JSON.stringify(this.cups));
       }
     } catch (error) {

@@ -1,13 +1,76 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Button, AppRegistry } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import cupsStore from './stores/cupsStore';
 import { observer } from 'mobx-react';
+import notifee, {
+  EventType,
+  TriggerType,
+  TimeUnit,
+} from '@notifee/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import cupsData from './cups';
+
+notifee.onBackgroundEvent(async ({ type, detail }) => {
+  const { notification, pressAction } = detail;
+
+  if (type === EventType.PRESS) {
+    let cups = await AsyncStorage.getItem('cups');
+    if (cups !== null) {
+      cups = JSON.parse(cups);
+      const availableCup = cups.find((cup) => !cup.drank);
+      if (availableCup) {
+        availableCup.drank = true;
+        await AsyncStorage.setItem('cups', JSON.stringify(cups));
+      } else {
+        await AsyncStorage.setItem('cups', JSON.stringify(cupsData));
+      }
+    }
+
+    // Remove the notification
+    await notifee.cancelNotification(notification.id);
+  }
+});
+
+notifee.onForegroundEvent(({ type, detail }) => {
+  if (type === EventType.PRESS) {
+    cupsStore.drinkCup();
+  }
+});
 
 const App = () => {
   const cups = cupsStore.cups;
+
+  async function onCreateTriggerNotification() {
+    try {
+      const channelId = await notifee.createChannel({
+        id: 'default',
+        name: 'Default Channel',
+      });
+
+      await notifee.createTriggerNotification(
+        {
+          id: 'default',
+          title: 'Reminder',
+          body: 'Drink a cup of water!',
+          android: {
+            channelId,
+          },
+        },
+        {
+          type: TriggerType.INTERVAL,
+          interval: 15,
+          timeUnit: TimeUnit.MINUTES,
+        }
+      );
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   return (
     <View style={styles.container}>
+      <Button title="Start!" onPress={onCreateTriggerNotification} />
       <View>
         <Text style={styles.ml}>{cupsStore.getRemainingCups()}ml</Text>
 
@@ -31,6 +94,7 @@ const App = () => {
 };
 
 export default observer(App);
+AppRegistry.registerComponent('App', () => App);
 export const theme = {
   colors: {
     gray100: '#212028',
@@ -41,8 +105,6 @@ export const theme = {
     blue70: '#32BAFA',
   },
 };
-
-export const cups = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
 export const styles = StyleSheet.create({
   container: {
